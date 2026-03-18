@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panos — Suivi des Pertes</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,8 +208,163 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
 .session-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
 .session-meta span{display:flex;align-items:center;gap:3px}
 .badge-emp{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(45,106,79,.1);color:var(--panos-green);margin-left:5px}
+
+/* VOICE INPUT */
+.voice-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--panos-brown);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px}
+.voice-btn:hover{background:var(--panos-green)}
+.voice-btn.listening{background:var(--danger);animation:voicePulse 1s ease-in-out infinite}
+.voice-btn.processing{background:var(--panos-green);opacity:.8;cursor:not-allowed}
+@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.4)}50%{box-shadow:0 0 0 10px rgba(192,57,43,0)}}
+.voice-dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex-shrink:0}
+.voice-btn.listening .voice-dot{animation:dotBlink .6s ease-in-out infinite}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.2}}
+.voice-transcript{margin-top:8px;padding:10px 14px;background:var(--cream);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--muted);font-style:italic;min-height:36px;text-align:center;display:none}
+.voice-transcript.visible{display:block}
+.voice-result{margin-top:6px;padding:8px 14px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:var(--radius-sm);font-size:13px;font-weight:700;color:var(--success);text-align:center;display:none}
+.voice-result.visible{display:block}
 .toast{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:var(--panos-green);color:var(--panos-yellow);padding:9px 18px;border-radius:30px;font-size:13px;font-weight:600;z-index:9999;animation:toastAnim 2.5s ease forwards;white-space:nowrap}
 @keyframes toastAnim{0%{opacity:0;top:76px}15%{opacity:1;top:66px}75%{opacity:1;top:66px}100%{opacity:0;top:58px}}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE TABLET / DESKTOP (>= 768px)
+═══════════════════════════════════════════ */
+@media (min-width: 768px) {
+  /* GENERAL */
+  body { font-size: 15px; }
+  .app-header { padding: 12px 24px; min-height: 64px; }
+  .header-panos-logo { height: 44px; }
+  .header-pertes-label { font-size: 16px; }
+
+  /* HOME PAGE */
+  .splash { flex-direction: row; align-items: stretch; padding: 0; }
+  .splash > div:first-child { flex: 1; max-height: none; }
+  .splash > div:last-child {
+    flex: 0 0 420px; padding: 40px 36px;
+    border-left: 1px solid var(--border);
+    justify-content: center;
+  }
+
+  /* ENCODING PAGE - TWO COLUMN LAYOUT */
+  #pageEntry { display: flex; flex-direction: column; }
+  .progress-bar-wrap { top: 64px; }
+  .cat-tabs-wrap { display: none !important; } /* replaced by sidebar */
+
+  .entry-tablet-layout {
+    display: flex;
+    flex: 1;
+    min-height: calc(100vh - 64px - 52px);
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* LEFT SIDEBAR - categories + product list */
+  .entry-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--card);
+    overflow-y: auto;
+    position: sticky;
+    top: 116px;
+    height: calc(100vh - 116px - 80px);
+  }
+
+  /* RIGHT MAIN - product card */
+  .entry-main {
+    flex: 1;
+    padding: 20px 24px 120px;
+    overflow-y: auto;
+  }
+  .entry-container {
+    max-width: 560px;
+    margin: 0;
+    padding: 0;
+  }
+  .product-name { font-size: 28px; }
+  .qty-number-input { font-size: 60px; }
+
+  /* NAV BUTTONS wider on tablet */
+  .nav-fixed {
+    max-width: 100%;
+    left: 260px; /* offset for sidebar */
+    padding: 12px 24px;
+  }
+  .nav-prev, .nav-next, .nav-finish { padding: 16px; font-size: 15px; }
+
+  /* MANAGER PANEL */
+  .manager-panel { max-width: 100%; padding: 20px 28px 60px; }
+  .tabs { gap: 4px; }
+  .tab-btn { font-size: 13px; padding: 10px 14px; }
+
+  /* REPORT TABLE */
+  .report-table { font-size: 14px; }
+  .report-table th, .report-table td { padding: 11px 16px; }
+
+  /* STATS SUMMARY CARDS */
+  #statsArea > div:first-child {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* FILTER ROW */
+  .filter-row { flex-wrap: nowrap; }
+
+  /* PRODUCT LIST TABLE */
+  .product-list-table { font-size: 14px; }
+
+  /* SESSIONS LIST */
+  .session-entry { padding: 13px 18px; }
+
+  /* VOICE OVERLAY */
+  #voiceOverlay > div { max-width: 520px; padding: 36px 32px; }
+  #voiceOvIcon { font-size: 64px; }
+}
+
+@media (min-width: 1024px) {
+  .entry-sidebar { width: 300px; }
+  .nav-fixed { left: 300px; }
+  .manager-panel { padding: 24px 40px 60px; }
+}
+
+/* SIDEBAR STYLES (used on tablet) */
+.sidebar-cat-section { padding: 0; }
+.sidebar-cat-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--muted);
+  background: var(--cream); border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .15s;
+  position: sticky; top: 0; z-index: 2;
+}
+.sidebar-cat-header:hover { background: var(--border); }
+.sidebar-cat-header.active-cat {
+  background: var(--panos-brown); color: var(--panos-yellow);
+}
+.sidebar-prod-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px 9px 20px;
+  font-size: 13px; font-weight: 500; color: var(--brown);
+  border-bottom: 1px solid rgba(0,0,0,.04);
+  cursor: pointer; transition: background .1s;
+  gap: 8px;
+}
+.sidebar-prod-item:hover { background: #f5f0e8; }
+.sidebar-prod-item.active-prod {
+  background: rgba(255,200,0,.15);
+  font-weight: 700; color: var(--panos-brown);
+  border-left: 3px solid var(--panos-yellow);
+}
+.sidebar-prod-item.has-loss { color: var(--danger); }
+.sidebar-prod-badge {
+  font-size: 11px; font-weight: 700;
+  background: var(--danger); color: #fff;
+  padding: 1px 7px; border-radius: 20px; flex-shrink: 0;
+}
+.sidebar-prod-badge.zero {
+  background: #D4EDDA; color: var(--success);
+}
+
 </style>
 </head>
 <body>
@@ -268,10 +423,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
       <span id="sessionClock" style="font-variant-numeric:tabular-nums;letter-spacing:.3px"></span>
     </div>
   </div>
+  <!-- Mobile: horizontal category tabs -->
   <div class="cat-tabs-wrap" id="catTabsWrap">
     <div class="cat-tabs-inner" id="catTabsInner"></div>
   </div>
-  <div class="entry-container" id="entryContainer"></div>
+  <!-- Tablet: two-column layout -->
+  <div class="entry-tablet-layout">
+    <div class="entry-sidebar" id="entrySidebar"></div>
+    <div class="entry-main">
+      <div class="entry-container" id="entryContainer"></div>
+    </div>
+  </div>
 </div>
 
 <!-- NAV ENCODAGE — en dehors de la page pour éviter le chevauchement position:fixed -->
@@ -281,7 +443,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
   <button class="nav-finish" id="btnFinish" onclick="showFinishModal()" style="display:none">✓ Terminer</button>
 </div>
 
-<!-- COMPLETION -->
+<!-- FLOATING MIC BUTTON -->
+<button id="floatingMic" onclick="openVoiceOverlay()" style="display:none;position:fixed;bottom:80px;right:16px;z-index:200;width:52px;height:52px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:22px;box-shadow:0 4px 16px rgba(192,57,43,.5);cursor:pointer;transition:all .2s;align-items:center;justify-content:center">🎙</button>
+
+<!-- VOICE OVERLAY -->
+<div id="voiceOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)">
+  <div style="background:var(--card);border-radius:24px;padding:28px 22px;width:100%;max-width:420px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div id="voiceOvIcon" style="font-size:52px;margin-bottom:10px">🎙</div>
+    <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brown);margin-bottom:4px">Encodage vocal</div>
+    <div id="voiceOvSubtitle" style="font-size:13px;color:var(--muted);margin-bottom:20px">Dites le produit et la quantité<br><em style="font-size:12px">ex : "trois croissants" · "deux baguettes blanches"</em></div>
+
+    <!-- Waveform animation -->
+    <div id="voiceWave" style="display:none;justify-content:center;align-items:flex-end;gap:4px;height:40px;margin-bottom:16px">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+
+    <div id="voiceOvTranscript" style="min-height:44px;padding:10px 14px;background:var(--cream);border-radius:10px;font-size:14px;color:var(--brown);font-style:italic;margin-bottom:14px;border:1px solid var(--border)">Appuyez pour parler…</div>
+
+    <div id="voiceOvResult" style="display:none;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:8px">
+      <button id="voiceOvBtn" onclick="toggleVoice()" style="flex:2;padding:14px;background:var(--danger);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s">🎙 Parler</button>
+      <button onclick="closeVoiceOverlay()" style="flex:1;padding:14px;background:var(--cream);color:var(--brown);border:2px solid var(--border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Fermer</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:12px">Vous pouvez dicter plusieurs produits à la suite</div>
+  </div>
+</div>
+
+<!-- COMPLETION --><!-- COMPLETION -->
 <div class="page" id="pageComplete">
   <div class="completion-screen">
     <div class="completion-icon">✅</div>
@@ -355,7 +546,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         <button class="btn-add-product" onclick="addCustomProduct()">✓ Ajouter ce produit</button>
       </div>
       <div class="manager-title" style="margin-bottom:6px">Liste complète</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">✏️ modifier · 🚫 désactiver temporairement · 🗑 supprimer (ajoutés seulement)</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">✏️ modifier · 🚫 désactiver · 🗑 supprimer (ajoutés seulement)</div>
       <div class="cat-filter-row" id="catFilterRow"></div>
       <div class="report-table-wrap">
         <table class="product-list-table">
@@ -365,19 +556,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="productCount"></div>
     </div>
-    <!-- ONGLET STATISTIQUES -->
     <div id="tabStats" style="display:none">
       <div class="manager-title">Statistiques des pertes</div>
-
-      <!-- Sub-navigation -->
       <div style="display:flex;gap:3px;margin-bottom:16px;background:var(--cream);padding:3px;border-radius:10px;overflow-x:auto;white-space:nowrap;scrollbar-width:none">
         <button class="tab-btn active" id="stNavMoy" onclick="switchStatsNav('moy',this)">📊 Moyennes</button>
         <button class="tab-btn" id="stNavEvo" onclick="switchStatsNav('evo',this)">📈 Évolution</button>
         <button class="tab-btn" id="stNavCmp" onclick="switchStatsNav('cmp',this)">⚖️ Comparaison</button>
         <button class="tab-btn" id="stNavDow" onclick="switchStatsNav('dow',this)">📅 Jour/semaine</button>
       </div>
-
-      <!-- MOYENNES -->
       <div id="stPaneMoy">
         <div class="filter-row">
           <div class="filter-group"><span class="filter-label">Du</span><input type="date" id="statsFrom" class="filter-input"/></div>
@@ -393,8 +579,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         </div>
         <div id="statsArea"></div>
       </div>
-
-      <!-- ÉVOLUTION -->
       <div id="stPaneEvo" style="display:none">
         <div class="filter-row">
           <div class="filter-group"><span class="filter-label">Du</span><input type="date" id="evoFrom" class="filter-input"/></div>
@@ -403,8 +587,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         </div>
         <div id="evoArea"></div>
       </div>
-
-      <!-- COMPARAISON -->
       <div id="stPaneCmp" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div style="background:var(--cream);border-radius:10px;padding:12px;border:2px solid var(--panos-green)">
@@ -421,8 +603,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         <button class="btn-filter" onclick="generateComparison()" style="width:100%;margin-bottom:14px">⚖️ Comparer les deux périodes</button>
         <div id="cmpArea"></div>
       </div>
-
-      <!-- JOUR DE SEMAINE -->
       <div id="stPaneDow" style="display:none">
         <div class="filter-row">
           <div class="filter-group"><span class="filter-label">Du</span><input type="date" id="dowFrom" class="filter-input"/></div>
@@ -432,10 +612,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         <div id="dowArea"></div>
       </div>
     </div>
-
     <div id="tabSettings" style="display:none">
       <div class="manager-title">Réglages</div>
       <div class="manager-subtitle">Paramètres de l'application</div>
+      <div class="settings-section">
+        <h4>👥 Gestion des employés</h4>
+        <p>Gérez la liste des prénoms disponibles à l'encodage quotidien.</p>
+        <div class="settings-row" style="margin-bottom:12px">
+          <div class="form-group" style="flex:2"><label>Nouveau prénom</label><input type="text" id="newEmpName" placeholder="ex: MARIE" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addEmployee()"/></div>
+          <button class="btn-settings" onclick="addEmployee()">Ajouter</button>
+        </div>
+        <div id="empListManager"></div>
+      </div>
       <div class="settings-section">
         <h4>➕ Créer une nouvelle catégorie</h4>
         <p>Ajoutez une catégorie personnalisée visible dans le formulaire d'ajout de produits.</p>
@@ -446,20 +634,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         </div>
         <div id="customCatsList" style="margin-top:12px"></div>
       </div>
-      <!-- EMPLOYEE MANAGEMENT -->
-      <div class="settings-section">
-        <h4>👥 Gestion des employés</h4>
-        <p>Gérez la liste des prénoms disponibles à l'encodage quotidien.</p>
-        <div class="settings-row" style="margin-bottom:12px">
-          <div class="form-group" style="flex:2">
-            <label>Nouveau prénom</label>
-            <input type="text" id="newEmpName" placeholder="ex: MARIE" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addEmployee()"/>
-          </div>
-          <button class="btn-settings" onclick="addEmployee()">Ajouter</button>
-        </div>
-        <div id="empListManager"></div>
-      </div>
-
       <div class="settings-section">
         <h4>🔐 Changer le mot de passe manager</h4>
         <p>Le nouveau mot de passe sera actif dès la prochaine connexion.</p>
@@ -498,6 +672,226 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
 </div>
 
 <script>
+
+// ── VOICE ENCODING ────────────────────────────────────────
+let _voiceRecognition = null;
+let _voiceActive = false;
+let _voiceMode = 'idle'; // idle | listening | processing
+
+function openVoiceOverlay(){
+  document.getElementById('voiceOverlay').style.display='flex';
+  setVoiceState('idle');
+}
+
+function closeVoiceOverlay(){
+  stopVoice();
+  document.getElementById('voiceOverlay').style.display='none';
+}
+
+function setVoiceState(state){
+  _voiceMode = state;
+  const btn = document.getElementById('voiceOvBtn');
+  const icon = document.getElementById('voiceOvIcon');
+  const wave = document.getElementById('voiceWave');
+  const sub = document.getElementById('voiceOvSubtitle');
+  if(!btn) return;
+
+  if(state === 'idle'){
+    btn.textContent = '🎙 Parler';
+    btn.style.background = 'var(--danger)';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+    icon.textContent = '🎙';
+    if(wave) wave.style.display='none';
+    if(sub) sub.innerHTML = 'Dites le produit et la quantité<br><em style="font-size:12px">ex : "trois croissants" · "deux baguettes blanches"</em>';
+  } else if(state === 'listening'){
+    btn.textContent = '⏹ Arrêter';
+    btn.style.background = '#c0392b';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+    icon.textContent = '🔴';
+    if(wave) wave.style.display='flex';
+    if(sub) sub.innerHTML = '<strong style="color:var(--danger)">En écoute...</strong><br><em style="font-size:12px">Parlez clairement</em>';
+  } else if(state === 'processing'){
+    btn.textContent = '⏳ Analyse IA...';
+    btn.style.background = 'var(--panos-green)';
+    btn.style.opacity = '.8';
+    btn.disabled = true;
+    icon.textContent = '🤖';
+    if(wave) wave.style.display='none';
+    if(sub) sub.innerHTML = '<em style="font-size:13px">L\'IA analyse votre dict\u00e9e...</em>';
+  }
+}
+
+function toggleVoice(){
+  if(_voiceMode === 'listening'){
+    stopVoice();
+    setVoiceState('idle');
+  } else if(_voiceMode === 'idle'){
+    startVoice();
+  }
+}
+
+function startVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    showToast('❌ Reconnaissance vocale non supportée par ce navigateur');
+    return;
+  }
+
+  _voiceRecognition = new SpeechRecognition();
+  _voiceRecognition.lang = 'fr-FR';
+  _voiceRecognition.continuous = false;
+  _voiceRecognition.interimResults = true;
+  _voiceRecognition.maxAlternatives = 5;
+  _voiceActive = true;
+  setVoiceState('listening');
+
+  const transcript = document.getElementById('voiceOvTranscript');
+  const resultEl = document.getElementById('voiceOvResult');
+  if(resultEl) resultEl.style.display='none';
+
+  _voiceRecognition.onresult = (e) => {
+    let interim = '', final = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    if(transcript) transcript.textContent = final || interim || 'En écoute...';
+    if(final){
+      stopVoice();
+      // Collect all alternatives
+      const alts = [];
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        for(let j = 0; j < e.results[i].length; j++){
+          alts.push(e.results[i][j].transcript);
+        }
+      }
+      processVoiceWithAI(final.trim(), alts);
+    }
+  };
+
+  _voiceRecognition.onerror = (e) => {
+    stopVoice();
+    setVoiceState('idle');
+    if(e.error === 'no-speech') showToast('Aucune parole détectée, réessayez');
+    else if(e.error === 'not-allowed') showToast('❌ Accès au microphone refusé');
+    else showToast('Erreur micro : ' + e.error);
+  };
+
+  _voiceRecognition.onend = () => {
+    if(_voiceActive) { stopVoice(); setVoiceState('idle'); }
+  };
+
+  _voiceRecognition.start();
+}
+
+function stopVoice(){
+  _voiceActive = false;
+  if(_voiceRecognition){
+    try { _voiceRecognition.stop(); } catch(e){}
+    _voiceRecognition = null;
+  }
+}
+
+async function processVoiceWithAI(spokenText, alternatives){
+  setVoiceState('processing');
+  const ENC = getEncodingProducts();
+  const resultEl = document.getElementById('voiceOvResult');
+
+  // Build compact product list for AI context
+  const productList = ENC.map(p => p.hope + ':' + p.name + '(' + p.cat + ')').join(', ');
+
+  const _prodLines = ENC.map(p => p.hope + ':' + p.name).join('\n');
+  const prompt = 'Tu es l\'assistant d\'encodage des pertes d\'une boulangerie Panos.\n' +
+    'Un employé vient de dicter vocalement : "' + spokenText + '"\n' +
+    'Alternatives : ' + alternatives.slice(0,3).join(' | ') + '\n\n' +
+    'Produits disponibles (CODE:NOM):\n' + _prodLines + '\n\n' +
+    'Identifie produit(s) et quantité. JSON UNIQUEMENT:\n' +
+    '{"produits":[{"hope":"CODE","nom":"NOM","quantite":0,"confiance":"haute"}],"messageEmploye":"..."}\n\n' +
+    'Règles: zéro/aucun→0, tolère approximations, liste tous si plusieurs, JSON seul.';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{role:'user', content: prompt}]
+      })
+    });
+
+    const data = await response.json();
+    const raw = (data.content?.[0]?.text || '').trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('Réponse invalide');
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    setVoiceState('idle');
+
+    if(!parsed.produits || !parsed.produits.length){
+      showVoiceResult('⚠️ Aucun produit reconnu, réessayez', 'warn');
+      return;
+    }
+
+    // Apply all recognized products
+    let applied = 0;
+    let resultLines = [];
+    parsed.produits.forEach(item => {
+      if(item.hope && item.quantite !== null && item.quantite !== undefined){
+        const qty = Math.max(0, Math.round(item.quantite));
+        // Find product index
+        const idx = ENC.findIndex(p => p.hope === item.hope);
+        if(idx >= 0){
+          // Save the quantity
+          const entries = window.sessionData || {};
+          if(!entries[currentDate]) entries[currentDate] = {};
+          entries[currentDate][item.hope] = qty;
+          saveStorage();
+          applied++;
+          const conf = item.confiance === 'haute' ? '✅' : item.confiance === 'moyenne' ? '⚠️' : '❓';
+          resultLines.push(conf + ' <strong>' + item.nom + '</strong> → ' + qty + ' perte(s)');
+        }
+      }
+    });
+
+    if(applied > 0){
+      // Navigate to the last recognized product
+      const lastHope = parsed.produits[parsed.produits.length-1].hope;
+      const lastIdx = ENC.findIndex(p => p.hope === lastHope);
+      if(lastIdx >= 0) currentIndex = lastIdx;
+      renderCard();
+
+      const msg = parsed.messageEmploye || (applied + ' produit(s) enregistré(s)');
+      showVoiceResult(resultLines.join('<br>') + '<br><em style="font-weight:400;color:var(--muted)">' + msg + '</em>', 'ok');
+      showToast('🎙 ' + applied + ' produit(s) encodé(s)');
+    } else {
+      showVoiceResult('⚠️ Produits non trouvés dans la liste, réessayez', 'warn');
+    }
+
+  } catch(err) {
+    setVoiceState('idle');
+    showVoiceResult('❌ Erreur : ' + err.message, 'error');
+  }
+}
+
+function showVoiceResult(html, type){
+  const el = document.getElementById('voiceOvResult');
+  if(!el) return;
+  el.style.display = 'block';
+  el.innerHTML = html;
+  if(type === 'ok'){
+    el.style.cssText = 'display:block;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px;background:#e8f5e9;border:1px solid #c8e6c9;color:var(--success)';
+  } else if(type === 'warn'){
+    el.style.cssText = 'display:block;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px;background:#fff3e0;border:1px solid #ffcc02;color:#856404';
+  } else {
+    el.style.cssText = 'display:block;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px;background:#fde8e8;border:1px solid #f5c6c6;color:var(--danger)';
+  }
+}
+
+
 
 // ================================================================
 // LISTE PRODUITS — conforme au fichier Excel PERTES_PANOS_ (mars 2026)
@@ -683,8 +1077,27 @@ function getTotalEncodingProducts(){return getEncodingProducts().length;}
 
 // ── STORAGE ───────────────────────────────────────────────
 function loadStorage(){
+  const HIST_END='2026-03-17';
   sessionData=JSON.parse(JSON.stringify(HISTORICAL_DATA));
-  try{const r=localStorage.getItem('panosPertes_v3');if(r){const l=JSON.parse(r);Object.entries(l).forEach(([d,e])=>{sessionData[d]=Object.assign(sessionData[d]||{},e);});}}catch(e){}
+  try{
+    const r=localStorage.getItem('panosPertes_v3');
+    if(r){
+      const l=JSON.parse(r);
+      // Load sessionMeta first to check which dates were manually re-encoded
+      let localMeta={};
+      try{const sm=localStorage.getItem('panosSessionMeta');if(sm)localMeta=JSON.parse(sm);}catch(e){}
+      Object.entries(l).forEach(([d,e])=>{
+        if(d>HIST_END){
+          // Post-history: localStorage is source of truth
+          sessionData[d]=e;
+        } else if(localMeta[d]&&localMeta[d].reencoded){
+          // Historical date explicitly re-encoded by employee: use localStorage
+          sessionData[d]=e;
+        }
+        // Otherwise: keep historical data (don't let localStorage corrupt it)
+      });
+    }
+  }catch(e){}
   try{const c=localStorage.getItem('panosCustomProducts');if(c)customProducts=JSON.parse(c);}catch(e){customProducts=[];}
   try{const o=localStorage.getItem('panosOverrides');if(o)productOverrides=JSON.parse(o);}catch(e){productOverrides={};}
   try{const d=localStorage.getItem('panosDisabled');if(d)disabledProducts=new Set(JSON.parse(d));}catch(e){disabledProducts=new Set();}
@@ -732,19 +1145,93 @@ function renderRecentSessions(){
     const badge=isComplete
       ? '<span class="session-btn-badge badge-complete">✓ Complète</span>'
       : '<span class="session-btn-badge badge-partial">En cours</span>';
-    const empStr=meta.employee?` · ${meta.employee}`:'';
-    html+=`<div class="swipe-wrap" id="sw-${dt}">
-      <div class="swipe-cancel-bg"><span>🗑<br>Annuler</span></div>
-      <button class="session-btn" onclick="resumeSession('${dt}')">
-        <div class="session-btn-date">${formatDateFR(dt)}${badge}</div>
-        <div class="session-btn-info">${filled}/${T} produits · ${total} unités perdues${empStr}</div>
-      </button>
-    </div>`;
+    const empStr=meta.employee?' · '+meta.employee:'';
+    html+='<div class="swipe-wrap" id="sw-'+dt+'">' +
+      '<div class="swipe-cancel-bg"><span>🗑<br>Annuler</span></div>' +
+      '<button class="session-btn" onclick="showSessionSummary(\''+dt+'\')">'+
+        '<div class="session-btn-date">'+formatDateFR(dt)+badge+'</div>'+
+        '<div class="session-btn-info">'+filled+'/'+T+' produits · <strong style="color:var(--danger)">'+total+' unités perdues</strong>'+empStr+'</div>'+
+      '</button>'+
+    '</div>';
   });
   container.innerHTML=html+'</div>';
-
-  // Attach swipe listeners to each wrap
   dates.forEach(dt=>attachSwipe(dt));
+}
+
+function showSessionSummary(dt){
+  const entries=sessionData[dt]||{};
+  const T=getTotalEncodingProducts();
+  const total=Object.values(entries).reduce((a,b)=>a+b,0);
+  const filled=Object.keys(entries).length;
+  const meta=sessionMeta[dt]||{};
+  const HIST_END='2026-03-17';
+  const isComplete=dt<=HIST_END||filled>=T;
+  const ALL=getAllProducts();
+
+  // Build per-category breakdown
+  const cats=[...new Set(ALL.map(p=>p.cat))];
+  let catRows='';
+  let grandTotal=0;
+  cats.forEach(cat=>{
+    const prods=ALL.filter(p=>p.cat===cat);
+    const catTotal=prods.reduce((s,p)=>s+(entries[p.hope]||0),0);
+    if(catTotal===0) return;
+    grandTotal+=catTotal;
+    catRows+='<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+      '<span>'+getCatIcon(cat)+' '+cat+'</span>'+
+      '<span style="font-weight:700;color:var(--danger)">'+catTotal+'</span>'+
+    '</div>';
+  });
+
+  // Top 5 products with most losses
+  const withLoss=ALL.map(p=>({...p,qty:entries[p.hope]||0}))
+    .filter(p=>p.qty>0).sort((a,b)=>b.qty-a.qty).slice(0,5);
+  let topRows='';
+  withLoss.forEach(p=>{
+    topRows+='<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)">'+
+      '<span style="color:var(--muted)">'+p.name+'</span>'+
+      '<span style="font-weight:700;color:var(--danger)">'+p.qty+'</span>'+
+    '</div>';
+  });
+
+  const timeStr=meta.startTime&&meta.endTime
+    ? new Date(meta.startTime).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+
+      ' → '+new Date(meta.endTime).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+    : meta.startTime
+      ? 'Début : '+new Date(meta.startTime).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+      : '';
+
+  const body='<div style="text-align:left">'+
+    // Header stats
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
+      '<div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">'+
+        '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Total pertes</div>'+
+        '<div style="font-size:26px;font-weight:700;color:var(--danger)">'+grandTotal+'</div>'+
+      '</div>'+
+      '<div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">'+
+        '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Produits</div>'+
+        '<div style="font-size:26px;font-weight:700;color:var(--panos-green)">'+withLoss.length+'</div>'+
+      '</div>'+
+      '<div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">'+
+        '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Encodage</div>'+
+        '<div style="font-size:12px;font-weight:600;color:var(--brown);margin-top:6px">'+(isComplete?'✓ Complet':'En cours')+'</div>'+
+      '</div>'+
+    '</div>'+
+    // Employee + time
+    (meta.employee||timeStr ? '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">'+
+      (meta.employee?'👤 '+meta.employee+'  ':'')+(timeStr?'🕐 '+timeStr:'')+
+    '</div>' : '')+
+    // Categories
+    (catRows ? '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Par catégorie</div>'+catRows : '')+
+    // Top products
+    (topRows ? '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:12px;margin-bottom:6px">Top produits</div>'+topRows : '')+
+    (grandTotal===0 ? '<div style="text-align:center;color:var(--success);font-weight:600;padding:16px">✓ Aucune perte ce jour</div>' : '')+
+  '</div>';
+
+  showModal('📋 '+formatDateFR(dt), body, [
+    {label:'Fermer', cls:'btn-secondary', fn:closeModal},
+    {label:(isComplete?'✏️ Modifier':'▶ Encoder'), cls:'modal-finish', fn:()=>{closeModal();resumeSession(dt);}}
+  ]);
 }
 
 function renderEmployeeGrid(){
@@ -779,6 +1266,13 @@ function startSession(){
   if(!sessionMeta[d].startTime)sessionMeta[d].startTime=new Date().toISOString();
   sessionMeta[d].employee=currentEmployee;
   saveSessionMeta();
+  // For historical dates being re-encoded: clear any previous bad localStorage data
+  const HIST_END_CHECK='2026-03-17';
+  if(d<=HIST_END_CHECK){
+    const localSess=JSON.parse(localStorage.getItem('panosPertes_v3')||'{}');
+    if(localSess[d]){delete localSess[d];localStorage.setItem('panosPertes_v3',JSON.stringify(localSess));}
+    sessionData[d]=JSON.parse(JSON.stringify(HISTORICAL_DATA[d]||{}));
+  }
   resumeSession(d);
 }
 function resumeSession(date){
@@ -787,7 +1281,8 @@ function resumeSession(date){
   currentIndex=0;
   for(let i=0;i<ENC.length;i++){if(entries[ENC[i].hope]===undefined){currentIndex=i;break;}}
   document.getElementById('headerDate').textContent=formatDateFR(date);
-  showPage('pageEntry');renderCard();
+  showPage('pageEntry');
+  if(isTablet()) renderCardAndSidebar(); else renderCard();
 }
 function goHome(){showPage('pageHome');renderRecentSessions();}
 
@@ -888,6 +1383,14 @@ function renderCard(){
     </div>
     <div style="text-align:center;padding:8px 0">
       <button class="zero-btn" onclick="setZero()">✓ 0 perte pour ce produit</button>
+    </div>
+    <div style="padding:0 0 4px">
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+        <span class="voice-dot"></span>
+        <span id="voiceBtnLabel">🎙 Dicter la quantité par la voix</span>
+      </button>
+      <div class="voice-transcript" id="voiceTranscript"></div>
+      <div class="voice-result" id="voiceResult"></div>
     </div>`;
   document.getElementById('btnPrev').disabled=currentIndex===0;
   const T=getTotalEncodingProducts(),isLast=currentIndex===T-1;
@@ -912,7 +1415,7 @@ function onQtyInput(val){
 }
 function adjustQty(d){const inp=document.getElementById('qtyInput');const v=Math.max(0,(parseInt(inp.value)||0)+d);inp.value=v;onQtyInput(v);}
 function setZero(){document.getElementById('qtyInput').value=0;onQtyInput(0);renderCard();}
-function navTo(idx){const inp=document.getElementById('qtyInput');const v=parseInt(inp?.value);if(!isNaN(v))onQtyInput(v);currentIndex=Math.max(0,Math.min(getTotalEncodingProducts()-1,idx));renderCard();window.scrollTo(0,0);}
+function navTo(idx){const inp=document.getElementById('qtyInput');const v=parseInt(inp?.value);if(!isNaN(v))onQtyInput(v);currentIndex=Math.max(0,Math.min(getTotalEncodingProducts()-1,idx));if(isTablet())renderCardAndSidebar();else renderCard();window.scrollTo(0,0);}
 document.addEventListener('keydown',e=>{if(!document.getElementById('pageEntry').classList.contains('active'))return;if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight'&&currentIndex<getTotalEncodingProducts()-1)navTo(currentIndex+1);if(e.key==='ArrowLeft')navTo(currentIndex-1);});
 
 // ── FINISH ────────────────────────────────────────────────
@@ -934,6 +1437,7 @@ function finishSession(){
   if(!sessionMeta[currentDate])sessionMeta[currentDate]={};
   sessionMeta[currentDate].endTime=new Date().toISOString();
   if(currentEmployee)sessionMeta[currentDate].employee=currentEmployee;
+  sessionMeta[currentDate].reencoded=true;  // Mark as manually encoded
   saveSessionMeta();
   document.getElementById('completeDateLabel').textContent=formatDateFR(currentDate);
   const all=getSession(currentDate),total=Object.values(all).reduce((a,b)=>a+b,0),withLoss=Object.values(all).filter(v=>v>0).length;
@@ -1841,6 +2345,59 @@ function cancelSession(dt){
   showToast('Session du '+formatDateFR(dt)+' annulée');
 }
 
+// ── VOICE INPUT + IA ─────────────────────────────────────
+// ── TABLET SIDEBAR ────────────────────────────────────────
+function isTablet(){ return window.innerWidth >= 768; }
+
+function renderSidebar(){
+  const sidebar = document.getElementById('entrySidebar');
+  if(!sidebar) return;
+  if(!isTablet()){ sidebar.innerHTML=''; return; }
+
+  const ENC = getEncodingProducts();
+  const entries = getSession(currentDate);
+  const cats = [];
+  ENC.forEach(p=>{ if(!cats.includes(p.cat)) cats.push(p.cat); });
+  const currentCat = ENC[currentIndex]?.cat;
+
+  let html = '';
+  cats.forEach(cat => {
+    const prods = ENC.filter(p => p.cat === cat);
+    const catTotal = prods.reduce((s,p) => s + (entries[p.hope]||0), 0);
+    const isActiveCat = cat === currentCat;
+    const color = (window.CAT_COLORS||{})[cat] || 'var(--panos-green)';
+    html += '<div class="sidebar-cat-section">' +
+      '<div class="sidebar-cat-header ' + (isActiveCat?'active-cat':'') + '" onclick="jumpToCategory(\'' + cat.replace(/'/g,"\\'") + '\')" style="' + (isActiveCat?'background:'+color+';color:#fff':'border-left:3px solid '+color) + '">' +
+        '<span>' + getCatIcon(cat) + '</span>' +
+        '<span style="flex:1">' + cat + '</span>' +
+        (catTotal>0 ? '<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,.25);padding:2px 7px;border-radius:20px">' + catTotal + '</span>' : '') +
+      '</div>';
+    prods.forEach(p => {
+      const idx = ENC.indexOf(p);
+      const qty = entries[p.hope];
+      const isActive = idx === currentIndex;
+      const hasLoss = qty !== undefined && qty > 0;
+      html += '<div class="sidebar-prod-item' + (isActive?' active-prod':'') + (hasLoss?' has-loss':'') + '" onclick="navTo(' + idx + ')">' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.name + '</span>' +
+        (qty !== undefined ? '<span class="sidebar-prod-badge' + (qty===0?' zero':'') + '">' + (qty===0?'✓':qty) + '</span>' : '') +
+      '</div>';
+    });
+    html += '</div>';
+  });
+
+  sidebar.innerHTML = html;
+  const activeEl = sidebar.querySelector('.active-prod');
+  if(activeEl) setTimeout(()=>activeEl.scrollIntoView({block:'nearest'}), 50);
+}
+
+// After renderCard, also refresh sidebar on tablet
+function renderCardAndSidebar(){
+  renderCard();
+  if(isTablet()) renderSidebar();
+}
+
+window.addEventListener('resize', ()=>{ if(isTablet()) renderSidebar(); });
+
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1900,6 +2457,7 @@ try {
   div.textContent = 'INIT ERROR:\n' + e.message + '\n' + e.stack;
   document.body.appendChild(div);
 }
+
 
 </script>
 </body>
