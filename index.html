@@ -433,6 +433,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
 <!-- NAV ENCODAGE — en dehors de la page pour éviter le chevauchement position:fixed -->
 
 
+<!-- NAV ENCODAGE — en dehors de la page pour éviter le chevauchement position:fixed -->
+<div class="nav-fixed" id="navFixed" style="display:none">
+  <button class="nav-prev" id="btnPrev" onclick="navTo(currentIndex-1)" disabled>◀</button>
+  <button class="nav-next" id="btnNext" onclick="navTo(currentIndex+1)">Suivant ▶</button>
+  <button class="nav-finish" id="btnFinish" onclick="showFinishModal()" style="display:none">✓ Terminer</button>
+</div>
+
 <!-- COMPLETION -->
 <div class="page" id="pageComplete">
   <div class="completion-screen">
@@ -2070,16 +2077,35 @@ function attachSwipe(dt){
 }
 
 function cancelSession(dt){
-  // Remove the locally stored data for this date (historical data reloads from HISTORICAL_DATA)
+  const HIST_END='2026-03-17';
+  const isHistorical = dt <= HIST_END;
+
+  if(!isHistorical){
+    // Nouvelle saisie — demander confirmation
+    if(!confirm('Supprimer définitivement la session du '+formatDateFR(dt)+' ?\n\nCette action est irréversible.')){
+      // Annuler le swipe — remettre la carte en place
+      const wrap=document.getElementById('sw-'+dt);
+      if(wrap){
+        const btn=wrap.querySelector('.session-btn');
+        if(btn){btn.style.transition='transform .25s ease';btn.style.transform='';btn.style.opacity='1';}
+        wrap.classList.remove('reveal');
+      }
+      return;
+    }
+  }
+
+  // Supprimer du localStorage
   const local=JSON.parse(localStorage.getItem('panosPertes_v3')||'{}');
   delete local[dt];
   localStorage.setItem('panosPertes_v3',JSON.stringify(local));
   delete sessionMeta[dt];
   saveSessionMeta();
-  // Reload session data (historical base + local overrides)
   loadStorage();
   renderRecentSessions();
-  showToast('Session du '+formatDateFR(dt)+' annulée');
+  const msg = isHistorical
+    ? 'Session réinitialisée aux données Excel'
+    : 'Session du '+formatDateFR(dt)+' supprimée';
+  showToast(msg);
 }
 
 function showPage(id){
