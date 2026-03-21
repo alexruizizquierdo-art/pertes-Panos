@@ -981,7 +981,24 @@ function loadStorage(){
   try{const em=localStorage.getItem('panosEmployees');if(em)employees=JSON.parse(em);}catch(e){}
   try{const sm=localStorage.getItem('panosSessionMeta');if(sm)sessionMeta=JSON.parse(sm);}catch(e){}
 }
-function saveStorage(){localStorage.setItem('panosPertes_v3',JSON.stringify(sessionData));}
+function saveStorage(){
+  // Ne sauvegarder que les données post-historiques et les re-encodages
+  // (pas les 422 jours d'historique Excel qui sont dans HISTORICAL_DATA)
+  const HIST_END='2026-03-17';
+  const toSave={};
+  Object.entries(sessionData).forEach(([d,e])=>{
+    if(d>HIST_END){
+      toSave[d]=e;
+    } else if(sessionMeta[d]&&sessionMeta[d].reencoded){
+      toSave[d]=e;
+    }
+  });
+  try{
+    localStorage.setItem('panosPertes_v3',JSON.stringify(toSave));
+  }catch(err){
+    console.warn('localStorage plein, tentative de nettoyage...',err);
+  }
+}
 function saveCustomProducts(){localStorage.setItem('panosCustomProducts',JSON.stringify(customProducts));}
 function saveOverrides(){localStorage.setItem('panosOverrides',JSON.stringify(productOverrides));}
 function saveDisabled(){localStorage.setItem('panosDisabled',JSON.stringify([...disabledProducts]));}
@@ -1167,8 +1184,8 @@ function renderCard(){
       <div class="qty-control">
         <button class="qty-btn" onclick="adjustQty(-1)">−</button>
         <div class="qty-display">
-          <input type="number" class="qty-number-input" id="qtyInput" value="${qty}" min="0" max="999"
-            oninput="onQtyInput(this.value)" onchange="onQtyInput(this.value)"/>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-number-input" id="qtyInput" value="${qty}" autocomplete="off" autocorrect="off"
+            oninput="onQtyInput(this.value)" onchange="onQtyInput(this.value)" onblur="onQtyInput(this.value)"/>
           <div class="qty-unit">unités perdues</div>
         </div>
         <button class="qty-btn plus" onclick="adjustQty(1)">+</button>
@@ -1194,14 +1211,21 @@ function updateProgress(){
   document.getElementById('progressLabel').textContent=p?.cat||'';
 }
 function onQtyInput(val){
-  const ENC=getEncodingProducts(),n=parseInt(val);
-  setQty(currentDate,ENC[currentIndex].hope,isNaN(n)||n<0?0:n);
+  const ENC=getEncodingProducts();
+  // Strip non-numeric characters (handles mobile keyboard quirks)
+  const cleaned=String(val).replace(/[^0-9]/g,'');
+  const n=cleaned===''?0:parseInt(cleaned,10);
+  const qty=isNaN(n)||n<0?0:n;
+  setQty(currentDate,ENC[currentIndex].hope,qty);
+  // Update the input display to show the cleaned value
+  const inp=document.getElementById('qtyInput');
+  if(inp&&inp.value!==String(qty)&&cleaned!==inp.value) inp.value=qty;
   const el=document.getElementById('savedInd');
   if(el){el.classList.add('visible');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('visible'),1800);}
 }
-function adjustQty(d){const inp=document.getElementById('qtyInput');const v=Math.max(0,(parseInt(inp.value)||0)+d);inp.value=v;onQtyInput(v);}
+function adjustQty(d){const inp=document.getElementById('qtyInput');const v=Math.max(0,(parseInt(inp.value.replace(/[^0-9]/g,''))||0)+d);inp.value=v;onQtyInput(v);}
 function setZero(){document.getElementById('qtyInput').value=0;onQtyInput(0);renderCard();}
-function navTo(idx){const inp=document.getElementById('qtyInput');const v=parseInt(inp?.value);if(!isNaN(v))onQtyInput(v);currentIndex=Math.max(0,Math.min(getTotalEncodingProducts()-1,idx));if(isTablet())renderCardAndSidebar();else renderCard();window.scrollTo(0,0);}
+function navTo(idx){const inp=document.getElementById('qtyInput');if(inp){const v=parseInt(inp.value.replace(/[^0-9]/g,'')||'0');onQtyInput(isNaN(v)?0:v);}currentIndex=Math.max(0,Math.min(getTotalEncodingProducts()-1,idx));if(isTablet())renderCardAndSidebar();else renderCard();window.scrollTo(0,0);}
 document.addEventListener('keydown',e=>{if(!document.getElementById('pageEntry').classList.contains('active'))return;if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight'&&currentIndex<getTotalEncodingProducts()-1)navTo(currentIndex+1);if(e.key==='ArrowLeft')navTo(currentIndex-1);});
 
 // ── FINISH ────────────────────────────────────────────────
