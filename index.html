@@ -953,7 +953,11 @@ let sessionMeta={};  // {date:{employee,startTime,endTime}}
 
 function getCatIcons(){const i={...BASE_CAT_ICONS};customCategories.forEach(c=>{i[c.name]=c.icon||'📦';});return i;}
 function getCatIcon(cat){return getCatIcons()[cat]||'📦';}
-function getAllProducts(){return[...PRODUCTS,...customProducts].map(p=>{const o=productOverrides[p.hope];return o?{...p,...o}:p;});}
+function getAllProducts(){
+  return [...PRODUCTS,...customProducts]
+    .map(p=>{const o=productOverrides[p.hope];return o?{...p,...o}:p;})
+    .filter(p=>!p.deleted);
+}
 function getEncodingProducts(){return getAllProducts().filter(p=>!disabledProducts.has(p.hope));}
 function getTotalEncodingProducts(){return getEncodingProducts().length;}
 
@@ -2237,11 +2241,64 @@ function addCustomProduct(){
   document.getElementById('newHope').value='';document.getElementById('newName').value='';
   renderProductsTab();showToast(`✓ "${name}" ajouté`);
 }
+function confirmDeleteProduct(hope){
+  const ALL=getAllProducts();
+  const p=ALL.find(p=>p.hope===hope);
+  if(!p) return;
+  const isCustom=!!p.custom;
+  const isStandard=!isCustom;
+
+  const body='<div style="text-align:left">'+
+    '<div style="background:var(--cream);border-radius:10px;padding:12px 14px;margin:10px 0">'+
+      '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)">'+
+        '<span style="color:var(--muted)">Code HOPE</span><strong>'+hope+'</strong></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)">'+
+        '<span style="color:var(--muted)">Produit</span><strong>'+p.name+'</strong></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">'+
+        '<span style="color:var(--muted)">Catégorie</span><strong>'+p.cat+'</strong></div>'+
+    '</div>'+
+    (isStandard?
+      '<div style="background:#fff3e0;border:1px solid #ffcc02;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404">'+
+        '⚠️ <strong>Produit standard Excel.</strong> Il sera masqué de la liste d\'encodage mais ses données historiques resteront intactes.'+
+      '</div>':
+      '<div style="background:#fde8e8;border:1px solid #f5c6c6;border-radius:8px;padding:10px 12px;font-size:12px;color:var(--danger)">'+
+        '⚠️ <strong>Suppression définitive.</strong> Ce produit personnalisé sera effacé et ne pourra pas être récupéré.'+
+      '</div>'
+    )+
+  '</div>';
+
+  showModal(
+    '🗑 Supprimer "'+p.name+'" ?',
+    body,
+    [{label:'← Annuler', cls:'btn-secondary', fn:closeModal},
+     {label:'🗑 Confirmer la suppression', cls:'modal-finish', fn:()=>{closeModal();doDeleteProduct(hope);}}]
+  );
+}
+
+function doDeleteProduct(hope){
+  const ALL=getAllProducts();
+  const p=ALL.find(p=>p.hope===hope);
+  if(!p)return;
+  if(p.custom){
+    // Custom product: remove completely
+    customProducts=customProducts.filter(p=>p.hope!==hope);
+    delete productOverrides[hope];
+    disabledProducts.delete(hope);
+    saveCustomProducts();saveOverrides();saveDisabled();
+  } else {
+    // Standard product: disable it (hide from encoding) + mark as deleted in overrides
+    disabledProducts.add(hope);
+    if(!productOverrides[hope]) productOverrides[hope]={};
+    productOverrides[hope].deleted=true;
+    saveDisabled();saveOverrides();
+  }
+  renderProductsTab();
+  showToast('🗑 "'+p.name+'" supprimé');
+}
+
 function deleteCustomProduct(hope){
-  const p=customProducts.find(p=>p.hope===hope);
-  if(!p||!confirm(`Supprimer "${p.name}" ?`))return;
-  customProducts=customProducts.filter(p=>p.hope!==hope);delete productOverrides[hope];disabledProducts.delete(hope);
-  saveCustomProducts();saveOverrides();saveDisabled();renderProductsTab();showToast('Produit supprimé');
+  // Legacy - redirect to new function
+  confirmDeleteProduct(hope);
 }
 function toggleDisable(hope){
   const p=getAllProducts().find(p=>p.hope===hope);if(!p)return;
@@ -2253,9 +2310,25 @@ function toggleDisable(hope){
   }
 }
 function enableAllProducts(){
-  if(!disabledProducts.size){showToast('Aucun produit désactivé');return;}
-  if(!confirm(`Réactiver les ${disabledProducts.size} produit(s) désactivé(s) ?`))return;
-  disabledProducts.clear();saveDisabled();renderProductsTab();renderSettingsTab();showToast('✓ Tous les produits sont réactivés');
+  const deletedCount=Object.values(productOverrides).filter(o=>o.deleted).length;
+  const total=disabledProducts.size+deletedCount;
+  if(!total){showToast('Aucun produit désactivé ou supprimé');return;}
+  showModal(
+    '🔄 Tout réactiver',
+    '<div style="font-size:14px">Réactiver <strong>'+total+' produit(s)</strong> ?</div>'+
+    '<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:13px;color:var(--muted)">'+
+      '• '+disabledProducts.size+' produit(s) désactivé(s)<br>'+
+      '• '+deletedCount+' produit(s) supprimé(s) (standards seulement)'+
+    '</div>',
+    [{label:'Annuler',cls:'btn-secondary',fn:closeModal},
+     {label:'✓ Réactiver tout',cls:'modal-finish',fn:()=>{
+       closeModal();
+       disabledProducts.clear();
+       Object.keys(productOverrides).forEach(h=>{if(productOverrides[h].deleted)delete productOverrides[h].deleted;});
+       saveDisabled();saveOverrides();renderProductsTab();renderSettingsTab();
+       showToast('✓ Tous les produits sont réactivés');
+     }}]
+  );
 }
 function openEditModal(hope){
   const p=getAllProducts().find(p=>p.hope===hope);if(!p)return;
@@ -2289,7 +2362,7 @@ function renderProductsTab(){
       const isCustom=!!p.custom,isDisabled=disabledProducts.has(p.hope),hasOverride=!!productOverrides[p.hope];
       const tr=document.createElement('tr');if(isDisabled)tr.className='disabled-row';else if(isCustom)tr.className='custom-row';
       const statusBadge=isDisabled?'<span class="badge-disabled">🚫 Désactivé</span>':isCustom?'<span class="badge-custom">✦ Ajouté</span>':`<span class="badge-base">✓ Standard${hasOverride?' (modifié)':''}</span>`;
-      const actions=`<button class="btn-edit" onclick="openEditModal('${p.hope}')">✏️</button>${isDisabled?`<button class="btn-enable" onclick="toggleDisable('${p.hope}')">✅</button>`:`<button class="btn-disable" onclick="toggleDisable('${p.hope}')">🚫</button>`}${isCustom?`<button class="btn-delete" onclick="deleteCustomProduct('${p.hope}')">🗑</button>`:''}`;
+      const actions=`<button class="btn-edit" onclick="openEditModal('${p.hope}')">✏️</button>${isDisabled?`<button class="btn-enable" onclick="toggleDisable('${p.hope}')">✅</button>`:`<button class="btn-disable" onclick="toggleDisable('${p.hope}')">🚫</button>`}<button class="btn-delete" onclick="confirmDeleteProduct('${p.hope}')">🗑</button>`;
       tr.innerHTML=`<td style="font-weight:700;color:var(--panos-brown);font-size:12px;background:rgba(255,200,0,.08)">${p.hope}</td><td style="font-weight:600">${p.name}</td><td style="font-size:12px;color:var(--muted)">${getCatIcon(cat)} ${cat}</td><td>${statusBadge}</td><td style="white-space:nowrap">${actions}</td>`;
       tbody.appendChild(tr);
     });
