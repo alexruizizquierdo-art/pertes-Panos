@@ -1198,7 +1198,7 @@ function renderCard(){
   document.getElementById('btnPrev').disabled=currentIndex===0;
   const T=getTotalEncodingProducts(),isLast=currentIndex===T-1;
   document.getElementById('btnNext').style.display=isLast?'none':'flex';
-  document.getElementById('btnFinish').style.display=isLast?'flex':'none';
+  document.getElementById('btnFinish').style.display='flex';
   setTimeout(()=>{const el=document.getElementById('qtyInput');if(el)el.select();},80);
 }
 function updateProgress(){
