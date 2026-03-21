@@ -478,6 +478,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
       <button class="tab-btn" onclick="switchTab('tabSessions',this)">📅 Sessions</button>
       <button class="tab-btn" onclick="switchTab('tabProducts',this)">📦 Produits</button>
       <button class="tab-btn" onclick="switchTab('tabStats',this)">📈 Stats</button>
+      <button class="tab-btn" onclick="switchTab('tabEdwebbos',this)">🏢 Edwebbos</button>
       <button class="tab-btn" onclick="switchTab('tabSettings',this)">⚙️ Réglages</button>
     </div>
     <div id="tabReport">
@@ -586,6 +587,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
         <div id="dowArea"></div>
       </div>
     </div>
+    <!-- ONGLET EDWEBBOS -->
+    <div id="tabEdwebbos" style="display:none">
+      <div class="manager-title">Suivi Edwebbos</div>
+      <div class="manager-subtitle">Traçabilité des pertes valorisées dans votre back-office</div>
+
+      <!-- Marqueur de progression -->
+      <div style="background:var(--card);border:2px solid var(--panos-green);border-radius:14px;padding:18px 18px 14px;margin-bottom:16px;box-shadow:var(--shadow)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--panos-green);margin-bottom:12px">📌 Dernière date traitée dans Edwebbos</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input type="date" id="edwebbosLastDate" class="filter-input" style="flex:1;min-width:140px"/>
+          <button class="btn-filter" onclick="saveEdwebbosDate()">✓ Enregistrer</button>
+        </div>
+        <div id="edwebbosStatusBar" style="margin-top:12px;font-size:13px;color:var(--muted)">—</div>
+      </div>
+
+      <!-- Résumé en attente -->
+      <div id="edwPendingBox" style="display:none;background:#fff8e1;border:1.5px solid var(--amber);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#856404;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">⏳ Périodes en attente de valorisation</div>
+        <div id="edwPendingList"></div>
+      </div>
+
+      <!-- Générateur de résumé pour Edwebbos -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)">
+        <div style="font-size:13px;font-weight:700;color:var(--brown);margin-bottom:12px">📋 Générer un résumé pour Edwebbos</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Sélectionnez la période A → B à valoriser. L'application calcule les totaux par produit prêts à saisir dans Edwebbos.</div>
+        <div class="filter-row" style="margin-bottom:12px">
+          <div class="filter-group"><span class="filter-label">Du (A)</span><input type="date" id="edwFrom" class="filter-input"/></div>
+          <div class="filter-group"><span class="filter-label">Au (B)</span><input type="date" id="edwTo" class="filter-input"/></div>
+          <button class="btn-filter" onclick="generateEdwebbosReport()">🔍 Générer</button>
+          <button class="btn-export" onclick="exportEdwebbosCSV()">📥 CSV</button>
+        </div>
+        <div id="edwReportArea"></div>
+      </div>
+    </div>
+
     <div id="tabSettings" style="display:none">
       <div class="manager-title">Réglages</div>
       <div class="manager-subtitle">Paramètres de l'application</div>
@@ -1215,11 +1251,247 @@ function checkManagerPwd(){
 function logoutManager(){document.getElementById('managerLoginDiv').style.display='flex';document.getElementById('managerPanelDiv').style.display='none';goHome();}
 function switchTab(id,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
-  ['tabReport','tabSessions','tabProducts','tabStats','tabSettings'].forEach(t=>document.getElementById(t).style.display=t===id?'block':'none');
+  ['tabReport','tabSessions','tabProducts','tabStats','tabEdwebbos','tabSettings'].forEach(t=>document.getElementById(t).style.display=t===id?'block':'none');
   if(id==='tabSessions')renderSessionsList();
   if(id==='tabProducts')renderProductsTab();
   if(id==='tabStats')initStatsTab();
+  if(id==='tabEdwebbos')initEdwebbosTab();
   if(id==='tabSettings')renderSettingsTab();
+}
+
+// ── EDWEBBOS ──────────────────────────────────────────────
+function initEdwebbosTab(){
+  // Load saved date
+  const saved=localStorage.getItem('panosEdwebbosDate')||'';
+  const inp=document.getElementById('edwebbosLastDate');
+  if(inp) inp.value=saved;
+  refreshEdwebbosStatus();
+
+  // Pre-fill report dates
+  const HIST_END='2026-03-17';
+  const nextDay=saved ? (() => {
+    const d=new Date(saved); d.setDate(d.getDate()+1);
+    return d.toISOString().split('T')[0];
+  })() : '2025-01-01';
+  const today=new Date().toISOString().split('T')[0];
+  const fromEl=document.getElementById('edwFrom');
+  const toEl=document.getElementById('edwTo');
+  if(fromEl&&!fromEl.value) fromEl.value=nextDay;
+  if(toEl&&!toEl.value) toEl.value=today;
+}
+
+function saveEdwebbosDate(){
+  const val=document.getElementById('edwebbosLastDate').value;
+  if(!val){showToast('Sélectionnez une date');return;}
+  localStorage.setItem('panosEdwebbosDate',val);
+  refreshEdwebbosStatus();
+  showToast('✓ Date Edwebbos enregistrée');
+}
+
+function refreshEdwebbosStatus(){
+  const saved=localStorage.getItem('panosEdwebbosDate')||'';
+  const statusBar=document.getElementById('edwebbosStatusBar');
+  const pendingBox=document.getElementById('edwPendingBox');
+  const pendingList=document.getElementById('edwPendingList');
+  if(!statusBar)return;
+
+  const today=new Date().toISOString().split('T')[0];
+
+  if(!saved){
+    statusBar.innerHTML='<span style="color:var(--danger)">⚠️ Aucune date enregistrée — indiquez la dernière date traitée dans Edwebbos</span>';
+    if(pendingBox) pendingBox.style.display='none';
+    return;
+  }
+
+  // Days between last treated and today
+  const lastDate=new Date(saved);
+  const todayDate=new Date(today);
+  const diffDays=Math.floor((todayDate-lastDate)/(1000*60*60*24));
+
+  const nextDay=new Date(saved); nextDay.setDate(nextDay.getDate()+1);
+  const nextDayStr=nextDay.toISOString().split('T')[0];
+
+  let statusHtml='';
+  if(diffDays<=0){
+    statusHtml='<span style="color:var(--success);font-weight:600">✅ Edwebbos est à jour — tout est valorisé</span>';
+    if(pendingBox) pendingBox.style.display='none';
+  } else {
+    statusHtml=`<span style="color:var(--danger);font-weight:600">⚠️ ${diffDays} jour(s) non valorisé(s)</span>
+    <span style="color:var(--muted)"> — du ${formatDateFR(nextDayStr)} au ${formatDateFR(today)}</span>`;
+
+    // Build pending periods grouped by month
+    const dates=[];
+    let d=new Date(nextDayStr);
+    while(d<=todayDate){
+      const dt=d.toISOString().split('T')[0];
+      const entries=sessionData[dt]||{};
+      const total=Object.values(entries).reduce((a,b)=>a+b,0);
+      dates.push({dt, total, hasData:Object.keys(entries).length>0});
+      d.setDate(d.getDate()+1);
+    }
+
+    // Group by month
+    const byMonth={};
+    dates.forEach(({dt,total,hasData})=>{
+      const m=dt.substring(0,7);
+      if(!byMonth[m])byMonth[m]={days:0,total:0,daysWithData:0};
+      byMonth[m].days++;
+      byMonth[m].total+=total;
+      if(hasData) byMonth[m].daysWithData++;
+    });
+
+    const mNames=['Janv','Févr','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc'];
+    let pendHtml='';
+    Object.entries(byMonth).sort().forEach(([ym,stats])=>{
+      const [y,m]=ym.split('-');
+      const label=mNames[parseInt(m)-1]+' '+y;
+      const color=stats.total>0?'var(--danger)':'var(--muted)';
+      pendHtml+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #ffe082;font-size:13px">
+        <span style="font-weight:600">${label}</span>
+        <span style="display:flex;gap:14px;align-items:center">
+          <span style="color:var(--muted);font-size:11px">${stats.daysWithData}/${stats.days} jours encodés</span>
+          <span style="font-weight:700;color:${color}">${stats.total} pertes</span>
+          <button onclick="quickFillEdwebbos('${ym}')" style="background:var(--panos-green);color:#fff;border:none;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Voir détail</button>
+        </span>
+      </div>`;
+    });
+    if(pendingList) pendingList.innerHTML=pendHtml||'<div style="color:var(--muted);font-size:13px">Aucune donnée disponible</div>';
+    if(pendingBox) pendingBox.style.display='block';
+  }
+  statusBar.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:13px">Dernière valorisation : <strong>${formatDateFR(saved)}</strong></span>
+    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${diffDays<=0?'#d4edda':'#fde8e8'};color:${diffDays<=0?'var(--success)':'var(--danger)'}">${diffDays<=0?'✅ À jour':'⏳ '+diffDays+' j. en attente'}</span>
+  </div>
+  <div style="margin-top:6px">${statusHtml}</div>`;
+}
+
+function quickFillEdwebbos(yearMonth){
+  // Pre-fill the report generator with the selected month
+  const [y,m]=yearMonth.split('-');
+  const firstDay=yearMonth+'-01';
+  const lastDay=new Date(parseInt(y), parseInt(m), 0).toDate ? 
+    new Date(parseInt(y), parseInt(m), 0).toISOString().split('T')[0] :
+    new Date(parseInt(y), parseInt(m), 0).toISOString().split('T')[0];
+  document.getElementById('edwFrom').value=firstDay;
+  document.getElementById('edwTo').value=lastDay;
+  generateEdwebbosReport();
+  // Scroll to report
+  document.getElementById('edwReportArea').scrollIntoView({behavior:'smooth'});
+}
+
+function generateEdwebbosReport(){
+  const from=document.getElementById('edwFrom').value;
+  const to=document.getElementById('edwTo').value;
+  if(!from||!to){showToast('Sélectionnez une période');return;}
+
+  const ALL=getAllProducts();
+  const dates=[];
+  let d=new Date(from); const end=new Date(to);
+  while(d<=end){dates.push(d.toISOString().split('T')[0]);d.setDate(d.getDate()+1);}
+
+  // Compute totals per product over the period
+  const totals={};
+  dates.forEach(dt=>{
+    ALL.forEach(p=>{
+      const q=(sessionData[dt]||{})[p.hope]||0;
+      if(q>0) totals[p.hope]=(totals[p.hope]||0)+q;
+    });
+  });
+
+  const withLoss=ALL.filter(p=>totals[p.hope]>0).sort((a,b)=>{
+    if(a.cat!==b.cat) return a.cat.localeCompare(b.cat);
+    return b-a;
+  });
+
+  const grandTotal=Object.values(totals).reduce((a,b)=>a+b,0);
+  const area=document.getElementById('edwReportArea');
+
+  if(!withLoss.length){
+    area.innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-state-icon">✅</div>Aucune perte sur cette période</div>';
+    return;
+  }
+
+  // Summary cards
+  const nDays=dates.length;
+  const daysWithData=dates.filter(dt=>Object.keys(sessionData[dt]||{}).length>0).length;
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    <div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Période</div>
+      <div style="font-size:13px;font-weight:700;color:var(--brown)">${nDays} jours</div>
+      <div style="font-size:10px;color:var(--muted)">${daysWithData} encodés</div>
+    </div>
+    <div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Total pertes</div>
+      <div style="font-size:22px;font-weight:700;color:var(--danger)">${grandTotal}</div>
+    </div>
+    <div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Produits concernés</div>
+      <div style="font-size:22px;font-weight:700;color:var(--panos-green)">${withLoss.length}</div>
+    </div>
+  </div>`;
+
+  // Table grouped by category
+  const cats=[...new Set(withLoss.map(p=>p.cat))];
+  html+='<div class="report-table-wrap"><table class="report-table"><thead><tr><th>Code HOPE</th><th>Produit</th><th>Catégorie</th><th style="text-align:right">Qté perdue</th></tr></thead><tbody>';
+
+  let lastCat='';
+  withLoss.forEach(p=>{
+    if(p.cat!==lastCat){
+      const catTotal=withLoss.filter(x=>x.cat===p.cat).reduce((s,x)=>s+(totals[x.hope]||0),0);
+      html+=`<tr style="background:rgba(45,106,79,.07)">
+        <td colspan="3" style="font-weight:700;font-size:12px;color:var(--panos-green)">${getCatIcon(p.cat)} ${p.cat}</td>
+        <td style="text-align:right;font-weight:700;color:var(--panos-green)">${catTotal}</td>
+      </tr>`;
+      lastCat=p.cat;
+    }
+    html+=`<tr>
+      <td class="hope-cell">${p.hope}</td>
+      <td style="font-weight:600">${p.name}</td>
+      <td style="font-size:11px;color:var(--muted)"></td>
+      <td style="text-align:right;font-weight:700;color:var(--danger)">${totals[p.hope]}</td>
+    </tr>`;
+  });
+
+  html+=`<tr class="total-row"><td colspan="3">TOTAL GÉNÉRAL</td><td style="text-align:right">${grandTotal}</td></tr>`;
+  html+='</tbody></table></div>';
+
+  // Mark as treated button
+  html+=`<div style="margin-top:12px;padding:12px;background:#e8f5e9;border-radius:10px;border:1px solid #c8e6c9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--success);font-weight:600">✅ Après avoir saisi ces données dans Edwebbos :</div>
+    <button onclick="markEdwebbosAsProcessed('${to}')" style="background:var(--panos-green);color:#fff;border:none;padding:10px 16px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+      ✓ Marquer traité jusqu'au ${formatDateFR(to)}
+    </button>
+  </div>`;
+
+  area.innerHTML=html;
+  window._edwData={withLoss,totals,grandTotal,from,to,nDays};
+}
+
+function markEdwebbosAsProcessed(date){
+  localStorage.setItem('panosEdwebbosDate',date);
+  document.getElementById('edwebbosLastDate').value=date;
+  refreshEdwebbosStatus();
+  showToast('✅ Edwebbos marqué traité jusqu\'au '+formatDateFR(date));
+}
+
+function exportEdwebbosCSV(){
+  const s=window._edwData;
+  if(!s){showToast('Générez d\'abord un résumé');return;}
+  const NL='\r\n';
+  let csv='\uFEFF';
+  csv+='Code HOPE;Produit;Categorie;Quantite perdue'+NL;
+  csv+=`;;Periode;${s.from} au ${s.to}${NL}`;
+  csv+=`;;Total general;${s.grandTotal}${NL}`;
+  csv+=NL;
+  s.withLoss.forEach(p=>{
+    csv+=`${p.hope};"${p.name}";"${p.cat}";${s.totals[p.hope]}${NL}`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='Edwebbos_'+s.from+'_'+s.to+'.csv';
+  a.click();
+  showToast('📥 Export Edwebbos téléchargé !');
 }
 
 // ── STATISTIQUES ──────────────────────────────────────────
