@@ -679,9 +679,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
       <button class="modal-finish" onclick="saveProductEdit()">✓ Enregistrer</button>
     </div>
   </div>
-</div>
-
-<script>
+</div><script>
 
 // ── TABLET SIDEBAR ────────────────────────────────────────
 function isTablet(){ return window.innerWidth >= 768; }
@@ -986,30 +984,128 @@ function loadStorage(){
   try{const sm=localStorage.getItem('panosSessionMeta');if(sm)sessionMeta=JSON.parse(sm);}catch(e){}
 }
 function saveStorage(){
-  // Ne sauvegarder que les données post-historiques et les re-encodages
-  // (pas les 422 jours d'historique Excel qui sont dans HISTORICAL_DATA)
   const HIST_END='2026-03-17';
   const toSave={};
   Object.entries(sessionData).forEach(([d,e])=>{
-    if(d>HIST_END){
-      toSave[d]=e;
-    } else if(sessionMeta[d]&&sessionMeta[d].reencoded){
-      toSave[d]=e;
-    }
+    if(d>HIST_END){toSave[d]=e;}
+    else if(sessionMeta[d]&&sessionMeta[d].reencoded){toSave[d]=e;}
   });
-  try{
-    localStorage.setItem('panosPertes_v3',JSON.stringify(toSave));
-  }catch(err){
-    console.warn('localStorage plein, tentative de nettoyage...',err);
-  }
+  try{localStorage.setItem('panosPertes_v3',JSON.stringify(toSave));}
+  catch(err){console.warn('localStorage plein',err);}
+  // Debounced Firebase sync (avoid too many writes)
+  clearTimeout(saveStorage._fbTimer);
+  saveStorage._fbTimer = setTimeout(syncToFirebase, 1200);
 }
 function saveCustomProducts(){localStorage.setItem('panosCustomProducts',JSON.stringify(customProducts));}
 function saveOverrides(){localStorage.setItem('panosOverrides',JSON.stringify(productOverrides));}
 function saveDisabled(){localStorage.setItem('panosDisabled',JSON.stringify([...disabledProducts]));}
 function saveCategories(){localStorage.setItem('panosCats',JSON.stringify(customCategories));}
 function saveEmployees(){localStorage.setItem('panosEmployees',JSON.stringify(employees));}
-function saveSessionMeta(){localStorage.setItem('panosSessionMeta',JSON.stringify(sessionMeta));}
+function saveSessionMeta(){localStorage.setItem('panosSessionMeta',JSON.stringify(sessionMeta));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
 function savePassword(pw){localStorage.setItem('panosPwd',pw);managerPassword=pw;}
+
+// ── INIT ──────────────────────────────────────────────────
+// ── FIREBASE ──────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDz--flbP838sxIgNYXKV3yRSpIx7qaCkA",
+  authDomain: "panos-pertes.firebaseapp.com",
+  projectId: "panos-pertes",
+  storageBucket: "panos-pertes.firebasestorage.app",
+  messagingSenderId: "128229575991",
+  appId: "1:128229575991:web:16b9fd111be7b2c0239eb2",
+  databaseURL: "https://panos-pertes-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+let _db = null;
+let _fbReady = false;
+let _syncTimeout = null;
+
+function initFirebase(){
+  let attempts = 0;
+  const tryInit = () => {
+    attempts++;
+    if(typeof firebase === 'undefined' || typeof firebase.database === 'undefined'){
+      if(attempts < 20){
+        setTimeout(tryInit, 500);
+      } else {
+        console.warn('Firebase SDK non disponible après '+attempts+' tentatives');
+      }
+      return;
+    }
+    try {
+      if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      _db = firebase.database();
+      _fbReady = true;
+      _db.ref('panosData').on('value', snapshot => {
+        const data = snapshot.val();
+        if(!data) return;
+        let changed = false;
+        if(data.sessions){
+          Object.entries(data.sessions).forEach(([d,e]) => {
+            if(d > '2026-03-17'){
+              if(JSON.stringify(sessionData[d]) !== JSON.stringify(e)){
+                sessionData[d] = e;
+                changed = true;
+              }
+            }
+          });
+        }
+        if(data.sessionMeta){
+          Object.entries(data.sessionMeta).forEach(([d,m]) => {
+            if(JSON.stringify(sessionMeta[d]) !== JSON.stringify(m)){
+              sessionMeta[d] = m;
+              changed = true;
+            }
+          });
+        }
+        if(changed){
+          renderRecentSessions();
+          showSyncStatus('✓ Synchronisé', 'rgba(45,106,79,.9)');
+        }
+      });
+      showSyncStatus('✓ Connecté', 'rgba(45,106,79,.9)');
+      console.log('Firebase connecté après '+attempts+' tentative(s)');
+    } catch(e) {
+      console.warn('Firebase erreur:', e.message);
+      _fbReady = false;
+    }
+  };
+  tryInit();
+}
+
+function showSyncStatus(msg, color){
+  const ind = document.getElementById('syncIndicator');
+  const lbl = document.getElementById('syncLabel');
+  const dot = document.getElementById('syncDot');
+  if(!ind) return;
+  ind.style.display = 'flex';
+  ind.style.background = color || 'rgba(45,106,79,.9)';
+  if(lbl) lbl.textContent = msg;
+  if(dot) dot.style.background = '#fff';
+  clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(() => { ind.style.display = 'none'; }, 3000);
+}
+
+function syncToFirebase(){
+  if(!_fbReady || !_db) return;
+  // Only sync post-history sessions and sessionMeta
+  const HIST_END = '2026-03-17';
+  const sessions = {};
+  Object.entries(sessionData).forEach(([d,e]) => {
+    if(d > HIST_END) sessions[d] = e;
+  });
+  showSyncStatus('⏳ Sync...', 'rgba(133,100,4,.9)');
+  _db.ref('panosData').update({
+    sessions,
+    sessionMeta,
+    lastSync: new Date().toISOString()
+  })
+  .then(() => showSyncStatus('✓ Synchronisé', 'rgba(45,106,79,.9)'))
+  .catch(err => {
+    console.warn('Sync Firebase échoué:', err);
+    showSyncStatus('⚠️ Hors ligne', 'rgba(192,57,43,.9)');
+  });
+}
 
 // ── INIT ──────────────────────────────────────────────────
 function init(){
@@ -1017,6 +1113,8 @@ function init(){
   document.getElementById('inputDate').value=today;
   document.getElementById('headerDate').textContent=formatDateFR(today);
   loadStorage();renderRecentSessions();renderEmployeeGrid();
+  // Init Firebase after UI is ready
+  setTimeout(initFirebase, 500);
 }
 function formatDateFR(d){if(!d)return'';const[y,m,day]=d.split('-');const months=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];return`${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;}
 function getSession(date){return sessionData[date]||{};}
@@ -2574,5 +2672,8 @@ function showInstallBtn(){
 window.addEventListener('appinstalled',()=>{const b=document.getElementById('installBtn');if(b)b.remove();});
 
 </script>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </body>
 </html>
