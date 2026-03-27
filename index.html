@@ -366,6 +366,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
 }
 
 </style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -2653,7 +2656,6 @@ function closeModal(){document.getElementById('modalOverlay').style.display='non
 function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 function showToast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800);}
 
-init();
 
 
 // ── PWA INSTALL ───────────────────────────────────────────
@@ -2671,9 +2673,12 @@ function showInstallBtn(){
 }
 window.addEventListener('appinstalled',()=>{const b=document.getElementById('installBtn');if(b)b.remove();});
 
+// Start app when page is fully loaded (ensures Firebase SDKs are ready)
+window.addEventListener('load', function(){
+  init();
+});
+
 </script>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </body>
 </html>
