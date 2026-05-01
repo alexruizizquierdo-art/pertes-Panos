@@ -1016,11 +1016,11 @@ function saveStorage(){
   clearTimeout(saveStorage._fbTimer);
   saveStorage._fbTimer = setTimeout(syncToFirebase, 1200);
 }
-function saveCustomProducts(){localStorage.setItem('panosCustomProducts',JSON.stringify(customProducts));}
-function saveOverrides(){localStorage.setItem('panosOverrides',JSON.stringify(productOverrides));}
-function saveDisabled(){localStorage.setItem('panosDisabled',JSON.stringify([...disabledProducts]));}
-function saveCategories(){localStorage.setItem('panosCats',JSON.stringify(customCategories));}
-function saveEmployees(){localStorage.setItem('panosEmployees',JSON.stringify(employees));}
+function saveCustomProducts(){localStorage.setItem('panosCustomProducts',JSON.stringify(customProducts));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
+function saveOverrides(){localStorage.setItem('panosOverrides',JSON.stringify(productOverrides));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
+function saveDisabled(){localStorage.setItem('panosDisabled',JSON.stringify([...disabledProducts]));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
+function saveCategories(){localStorage.setItem('panosCats',JSON.stringify(customCategories));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
+function saveEmployees(){localStorage.setItem('panosEmployees',JSON.stringify(employees));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
 function saveSessionMeta(){localStorage.setItem('panosSessionMeta',JSON.stringify(sessionMeta));clearTimeout(saveStorage._fbTimer);saveStorage._fbTimer=setTimeout(syncToFirebase,1200);}
 function savePassword(pw){localStorage.setItem('panosPwd',pw);managerPassword=pw;}
 
@@ -1057,32 +1057,75 @@ function initFirebase(){
       _db = firebase.database();
       _fbReady = true;
       _db.ref('panosData').on('value', snapshot => {
-        const data = snapshot.val();
-        if(!data) return;
-        let changed = false;
-        if(data.sessions){
-          Object.entries(data.sessions).forEach(([d,e]) => {
-            if(d > '2026-03-17'){
-              if(JSON.stringify(sessionData[d]) !== JSON.stringify(e)){
-                sessionData[d] = e;
-                changed = true;
-              }
+      const data = snapshot.val();
+      if(!data) return;
+      let changed = false;
+
+      // Sessions
+      if(data.sessions){
+        Object.entries(data.sessions).forEach(([d,e]) => {
+          if(d > '2026-03-17'){
+            if(JSON.stringify(sessionData[d]) !== JSON.stringify(e)){
+              sessionData[d] = e; changed = true;
             }
-          });
+          }
+        });
+      }
+
+      // Session meta
+      if(data.sessionMeta){
+        Object.entries(data.sessionMeta).forEach(([d,m]) => {
+          if(JSON.stringify(sessionMeta[d]) !== JSON.stringify(m)){
+            sessionMeta[d] = m; changed = true;
+          }
+        });
+      }
+
+      // Manager settings — apply only if remote is newer
+      const remoteSync = data.lastSync || '';
+      const localSync = localStorage.getItem('panosLastSync') || '';
+      if(remoteSync > localSync){
+        if(data.customProducts && JSON.stringify(data.customProducts) !== JSON.stringify(customProducts)){
+          customProducts = data.customProducts;
+          localStorage.setItem('panosCustomProducts', JSON.stringify(customProducts));
+          changed = true;
         }
-        if(data.sessionMeta){
-          Object.entries(data.sessionMeta).forEach(([d,m]) => {
-            if(JSON.stringify(sessionMeta[d]) !== JSON.stringify(m)){
-              sessionMeta[d] = m;
-              changed = true;
-            }
-          });
+        if(data.productOverrides && JSON.stringify(data.productOverrides) !== JSON.stringify(productOverrides)){
+          productOverrides = data.productOverrides;
+          localStorage.setItem('panosOverrides', JSON.stringify(productOverrides));
+          changed = true;
         }
-        if(changed){
-          renderRecentSessions();
-          showSyncStatus('✓ Synchronisé', 'rgba(45,106,79,.9)');
+        if(data.disabledProducts){
+          const remoteDisabled = new Set(data.disabledProducts);
+          if(JSON.stringify([...remoteDisabled].sort()) !== JSON.stringify([...disabledProducts].sort())){
+            disabledProducts = remoteDisabled;
+            localStorage.setItem('panosDisabled', JSON.stringify([...disabledProducts]));
+            changed = true;
+          }
         }
-      });
+        if(data.customCategories && JSON.stringify(data.customCategories) !== JSON.stringify(customCategories)){
+          customCategories = data.customCategories;
+          localStorage.setItem('panosCats', JSON.stringify(customCategories));
+          changed = true;
+        }
+        if(data.employees && JSON.stringify(data.employees) !== JSON.stringify(employees)){
+          employees = data.employees;
+          localStorage.setItem('panosEmployees', JSON.stringify(employees));
+          changed = true;
+        }
+        if(data.managerPassword && data.managerPassword !== managerPassword){
+          managerPassword = data.managerPassword;
+          localStorage.setItem('panosPwd', managerPassword);
+        }
+        localStorage.setItem('panosLastSync', remoteSync);
+      }
+
+      if(changed){
+        renderRecentSessions();
+        if(document.getElementById('empSelect')) renderEmployeeGrid();
+        showSyncStatus('✓ Synchronisé', 'rgba(45,106,79,.9)');
+      }
+    });
       showSyncStatus('✓ Connecté', 'rgba(45,106,79,.9)');
       console.log('Firebase connecté après '+attempts+' tentative(s)');
     } catch(e) {
@@ -1108,16 +1151,22 @@ function showSyncStatus(msg, color){
 
 function syncToFirebase(){
   if(!_fbReady || !_db) return;
-  // Only sync post-history sessions and sessionMeta
   const HIST_END = '2026-03-17';
   const sessions = {};
   Object.entries(sessionData).forEach(([d,e]) => {
     if(d > HIST_END) sessions[d] = e;
+    else if(sessionMeta[d] && sessionMeta[d].reencoded) sessions[d] = e;
   });
   showSyncStatus('⏳ Sync...', 'rgba(133,100,4,.9)');
   _db.ref('panosData').update({
     sessions,
     sessionMeta,
+    customProducts,
+    productOverrides,
+    disabledProducts: [...disabledProducts],
+    customCategories,
+    employees,
+    managerPassword,
     lastSync: new Date().toISOString()
   })
   .then(() => showSyncStatus('✓ Synchronisé', 'rgba(45,106,79,.9)'))
