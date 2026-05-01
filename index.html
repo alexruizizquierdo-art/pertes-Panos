@@ -708,43 +708,78 @@ function renderSidebar(){
   const sidebar=document.getElementById('entrySidebar');
   if(!sidebar)return;
   if(!isTablet()){sidebar.innerHTML='';return;}
+
   const ENC=getEncodingProducts(),entries=getSession(currentDate),cats=[];
   ENC.forEach(p=>{if(!cats.includes(p.cat))cats.push(p.cat);});
-  const currentCat=ENC[currentIndex]?.cat;
-  let html='';
-  cats.forEach((cat,ci)=>{
-    const prods=ENC.filter(p=>p.cat===cat);
-    const catTotal=prods.reduce((s,p)=>s+(entries[p.hope]||0),0);
-    const isActiveCat=cat===currentCat;
-    const color=CAT_COLORS[cat]||'var(--panos-green)';
-    const activeStyle=isActiveCat?'background:'+color+';color:#fff':'border-left:3px solid '+color;
-    const activeCls=isActiveCat?' active-cat':'';
-    html+='<div class="sidebar-cat-section">';
-    html+='<div class="sidebar-cat-header'+activeCls+'" data-cat="'+ci+'" style="'+activeStyle+'">'+
-      getCatIcon(cat)+' '+cat+
-      (catTotal>0?' <span style="font-size:10px;font-weight:700;background:rgba(255,255,255,.25);padding:2px 7px;border-radius:20px">'+catTotal+'</span>':'')+
-    '</div>';
-    prods.forEach(p=>{
-      const idx=ENC.indexOf(p),qty=entries[p.hope],isActive=idx===currentIndex,hasLoss=qty!==undefined&&qty>0;
-      html+='<div class="sidebar-prod-item'+(isActive?' active-prod':'')+(hasLoss?' has-loss':'')+'" data-idx="'+idx+'">'+
-        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</span>'+
-        (qty!==undefined?'<span class="sidebar-prod-badge'+(qty===0?' zero':'')+'>'+(qty===0?'✓':qty)+'</span>':'')+
+
+  // FIRST BUILD — only once
+  if(!sidebar.dataset.built){
+    let html='';
+    cats.forEach((cat,ci)=>{
+      const prods=ENC.filter(p=>p.cat===cat);
+      const color=CAT_COLORS[cat]||'var(--panos-green)';
+      html+='<div class="sidebar-cat-section">';
+      html+='<div class="sidebar-cat-header" data-cat="'+ci+'" data-catname="'+cat+'" style="border-left:3px solid '+color+'">'+
+        '<span>'+getCatIcon(cat)+'</span><span class="cat-label" style="flex:1;overflow:hidden;text-overflow:ellipsis">'+cat+'</span>'+
+        '<span class="cat-total-badge" style="font-size:10px;font-weight:700;background:rgba(255,255,255,.25);padding:2px 7px;border-radius:20px;display:none"></span>'+
       '</div>';
+      prods.forEach(p=>{
+        const idx=ENC.indexOf(p);
+        html+='<div class="sidebar-prod-item" data-idx="'+idx+'" data-hope="'+p.hope+'">'+
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</span>'+
+          '<span class="sidebar-prod-badge zero" style="display:none">✓</span>'+
+        '</div>';
+      });
+      html+='</div>';
     });
-    html+='</div>';
+    sidebar.innerHTML=html;
+    sidebar.dataset.built='1';
+    sidebar.querySelectorAll('[data-cat]').forEach(el=>
+      el.addEventListener('click',()=>jumpToCategory(el.dataset.catname)));
+    sidebar.querySelectorAll('[data-idx]').forEach(el=>
+      el.addEventListener('click',()=>navTo(parseInt(el.dataset.idx))));
+  }
+
+  // UPDATE active states + badges (no rebuild)
+  const currentCat=ENC[currentIndex]?.cat;
+  sidebar.querySelectorAll('.sidebar-prod-item').forEach(el=>{
+    const idx=parseInt(el.dataset.idx),p=ENC[idx];if(!p)return;
+    const qty=entries[p.hope];
+    el.classList.toggle('active-prod',idx===currentIndex);
+    el.classList.toggle('has-loss',qty!==undefined&&qty>0);
+    const badge=el.querySelector('.sidebar-prod-badge');
+    if(badge){
+      if(qty!==undefined){
+        badge.style.display='';
+        badge.className='sidebar-prod-badge'+(qty===0?' zero':'');
+        badge.textContent=qty===0?'✓':qty;
+      } else {
+        badge.style.display='none';
+      }
+    }
   });
-  sidebar.innerHTML=html;
-  // Add click listeners
-  sidebar.querySelectorAll('[data-cat]').forEach(el=>{
-    const ci=parseInt(el.dataset.cat);
-    const cats2=[];ENC.forEach(p=>{if(!cats2.includes(p.cat))cats2.push(p.cat);});
-    el.addEventListener('click',()=>jumpToCategory(cats2[ci]));
+  sidebar.querySelectorAll('.sidebar-cat-header').forEach(el=>{
+    const cat=el.dataset.catname,color=CAT_COLORS[cat]||'var(--panos-green)';
+    const isActiveCat=cat===currentCat;
+    const catTotal=ENC.filter(p=>p.cat===cat).reduce((s,p)=>s+(entries[p.hope]||0),0);
+    el.style.cssText=isActiveCat?'background:'+color+';color:#fff':'border-left:3px solid '+color;
+    el.classList.toggle('active-cat',isActiveCat);
+    const tb=el.querySelector('.cat-total-badge');
+    if(tb){tb.textContent=catTotal;tb.style.display=catTotal>0?'':'none';}
   });
-  sidebar.querySelectorAll('[data-idx]').forEach(el=>{
-    el.addEventListener('click',()=>navTo(parseInt(el.dataset.idx)));
-  });
+
+  // Scroll active item into view only if needed
   const activeEl=sidebar.querySelector('.active-prod');
-  if(activeEl)setTimeout(()=>activeEl.scrollIntoView({block:'nearest'}),50);
+  if(activeEl){
+    const r=activeEl.getBoundingClientRect(),sr=sidebar.getBoundingClientRect();
+    if(r.top<sr.top||r.bottom>sr.bottom)
+      activeEl.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+}
+
+function resetSidebar(){
+  const sb=document.getElementById('entrySidebar');
+  if(sb){sb.innerHTML='';delete sb.dataset.built;}
 }
 
 function renderCardAndSidebar(){renderCard();if(isTablet())renderSidebar();}
@@ -1267,6 +1302,7 @@ function resumeSession(date){
   currentIndex=0;
   for(let i=0;i<ENC.length;i++){if(entries[ENC[i].hope]===undefined){currentIndex=i;break;}}
   document.getElementById('headerDate').textContent=formatDateFR(date);
+  resetSidebar();
   showPage('pageEntry');
   if(isTablet())renderCardAndSidebar();else renderCard();
 }
