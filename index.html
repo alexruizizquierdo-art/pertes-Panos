@@ -384,8 +384,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--brown);mi
 }
 </style>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
@@ -1007,9 +1007,24 @@ let sessionMeta={};  // {date:{employee,startTime,endTime}}
 function getCatIcons(){const i={...BASE_CAT_ICONS};customCategories.forEach(c=>{i[c.name]=c.icon||'📦';});return i;}
 function getCatIcon(cat){return getCatIcons()[cat]||'📦';}
 function getAllProducts(){
-  return [...PRODUCTS,...customProducts]
+  const base=[...PRODUCTS,...customProducts]
     .map(p=>{const o=productOverrides[p.hope];return o?{...p,...o}:p;})
     .filter(p=>!p.deleted);
+  // Sort by category order (same order as PRODUCTS) so custom products appear with their family
+  const catOrder=[];
+  PRODUCTS.forEach(p=>{if(!catOrder.includes(p.cat))catOrder.push(p.cat);});
+  customCategories.forEach(c=>{if(!catOrder.includes(c.name))catOrder.push(c.name);});
+  return base.sort((a,b)=>{
+    const ia=catOrder.indexOf(a.cat),ib=catOrder.indexOf(b.cat);
+    if(ia!==ib)return ia-ib;
+    // Same category: base products first (by original index), then custom
+    const ai=PRODUCTS.findIndex(p=>p.hope===a.hope);
+    const bi=PRODUCTS.findIndex(p=>p.hope===b.hope);
+    if(ai>=0&&bi>=0)return ai-bi;
+    if(ai>=0)return -1;
+    if(bi>=0)return 1;
+    return 0;
+  });
 }
 function getEncodingProducts(){return getAllProducts().filter(p=>!disabledProducts.has(p.hope));}
 function getTotalEncodingProducts(){return getEncodingProducts().length;}
@@ -1079,7 +1094,7 @@ function initFirebase(){
   let attempts = 0;
   const tryInit = () => {
     attempts++;
-    if(typeof firebase === 'undefined' || typeof firebase.database === 'undefined'){
+    if(typeof firebase === 'undefined' || !firebase.database){
       if(attempts < 20){
         setTimeout(tryInit, 500);
       } else {
@@ -1350,33 +1365,18 @@ function renderCategoryTabs() {
     tab.addEventListener('click', () => jumpToCategory(cat));
     inner.appendChild(tab);
   });
-  
-  // Auto-scroll active tab into view
-  const activeTab = inner.querySelector('.cat-tab.active');
-  if (activeTab) {
-    setTimeout(() => activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }), 50);
-  }
 }
 
 function jumpToCategory(cat) {
-  // Save current qty first
   const inp = document.getElementById('qtyInput');
   const v = parseInt(inp?.value);
   if (!isNaN(v)) onQtyInput(v);
-  
-  // Find first unencoded product in this category, or first product if all done
   const ENC = getEncodingProducts();
-  const entries = getSession(currentDate);
   const catProds = ENC.map((p, i) => ({ p, i })).filter(({ p }) => p.cat === cat);
-  
   if (!catProds.length) return;
-  
-  // Prefer first unentered product in category
-  const firstUndone = catProds.find(({ p }) => entries[p.hope] === undefined);
-  const targetIdx = firstUndone ? firstUndone.i : catProds[0].i;
-  
-  currentIndex = targetIdx;
-  renderCard();
+  // Toujours aller au premier produit de la catégorie
+  currentIndex = catProds[0].i;
+  if(isTablet()) renderCardAndSidebar(); else renderCard();
   window.scrollTo(0, 0);
 }
 
